@@ -18,10 +18,14 @@ const SHAPES = [
 // Game variables
 let board;
 let currentPiece;
+let nextPiece;
 let currentX;
 let currentY;
 let gameLoop;
 let dropInterval = 1000; // Time in ms between automatic drops
+let score = 0;
+let level = 1;
+let linesCleared = 0;
 
 // Initialize the game
 function init() {
@@ -30,6 +34,7 @@ function init() {
     
     // Create the game board in the DOM
     const gameBoard = document.querySelector('.game-board');
+    gameBoard.innerHTML = '';
     for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
             const cell = document.createElement('div');
@@ -40,8 +45,24 @@ function init() {
         }
     }
     
+    // Initialize the next piece preview
+    const nextPiecePreview = document.getElementById('next-piece-preview');
+    nextPiecePreview.innerHTML = '';
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            nextPiecePreview.appendChild(cell);
+        }
+    }
+    
     // Start the game
+    score = 0;
+    level = 1;
+    linesCleared = 0;
+    updateScore();
     newPiece();
+    newPiece(); // Generate the next piece as well
     draw();
     gameLoop = setInterval(drop, dropInterval);
 
@@ -51,16 +72,26 @@ function init() {
 
 // Create a new piece
 function newPiece() {
+    if (nextPiece) {
+        currentPiece = nextPiece;
+    } else {
+        const shapeIndex = Math.floor(Math.random() * 7) + 1;
+        currentPiece = SHAPES[shapeIndex];
+    }
+    
     const shapeIndex = Math.floor(Math.random() * 7) + 1;
-    currentPiece = SHAPES[shapeIndex];
+    nextPiece = SHAPES[shapeIndex];
+    
     currentX = Math.floor(COLS / 2) - Math.ceil(currentPiece[0].length / 2);
     currentY = 0;
 
     if (collision()) {
         // Game over
         clearInterval(gameLoop);
-        alert("Game Over!");
+        alert(`Game Over! Your score: ${score}`);
     }
+    
+    drawNextPiece();
 }
 
 // Draw the game state
@@ -83,6 +114,21 @@ function draw() {
         row.forEach((value, x) => {
             if (value) {
                 const index = (currentY + y) * COLS + (currentX + x);
+                cells[index].classList.add('filled', `piece-${value}`);
+            }
+        });
+    });
+}
+
+// Draw the next piece preview
+function drawNextPiece() {
+    const cells = document.querySelectorAll('#next-piece-preview .cell');
+    cells.forEach(cell => cell.className = 'cell');
+    
+    nextPiece.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value) {
+                const index = y * 4 + x;
                 cells[index].classList.add('filled', `piece-${value}`);
             }
         });
@@ -129,12 +175,34 @@ function mergePiece() {
 
 // Clear completed lines
 function clearLines() {
+    let linesCleared = 0;
     for (let y = ROWS - 1; y >= 0; y--) {
         if (board[y].every(cell => cell !== 0)) {
             board.splice(y, 1);
             board.unshift(Array(COLS).fill(0));
+            linesCleared++;
         }
     }
+    if (linesCleared > 0) {
+        updateScore(linesCleared);
+    }
+}
+
+// Update score and level
+function updateScore(lines = 0) {
+    const lineScores = [40, 100, 300, 1200]; // Points for 1, 2, 3, and 4 lines
+    score += lines > 0 ? lineScores[lines - 1] * level : 0;
+    linesCleared += lines;
+    level = Math.floor(linesCleared / 10) + 1;
+    
+    // Update drop speed
+    clearInterval(gameLoop);
+    dropInterval = Math.max(100, 1000 - (level - 1) * 100); // Minimum 100ms interval
+    gameLoop = setInterval(drop, dropInterval);
+    
+    // Update DOM
+    document.getElementById('score').textContent = score;
+    document.getElementById('level').textContent = level;
 }
 
 // Rotate the piece
@@ -171,6 +239,14 @@ function handleKeyPress(event) {
             break;
         case 38: // Up arrow
             rotate();
+            break;
+        case 32: // Spacebar (hard drop)
+            while (!collision()) {
+                currentY++;
+            }
+            currentY--;
+            mergePiece();
+            newPiece();
             break;
     }
     draw();

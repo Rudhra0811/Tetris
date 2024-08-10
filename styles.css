@@ -39,11 +39,12 @@ body {
     border: 2px solid #333;
     padding: 10px;
     background-color: #fff;
+    margin-bottom: 20px;
 }
 
 #next-piece-preview {
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(4, 1fr);
@@ -57,10 +58,24 @@ body {
     border: 1px solid #999;
 }
 
-.piece-I { background-color: cyan; }
-.piece-J { background-color: blue; }
-.piece-L { background-color: orange; }
-.piece-O { background-color: yellow; }
-.piece-S { background-color: green; }
-.piece-T { background-color: purple; }
-.piece-Z { background-color: red; }
+.piece-1 { background-color: cyan; }
+.piece-2 { background-color: blue; }
+.piece-3 { background-color: orange; }
+.piece-4 { background-color: yellow; }
+.piece-5 { background-color: green; }
+.piece-6 { background-color: purple; }
+.piece-7 { background-color: red; }
+
+#start-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#start-button:hover {
+    background-color: #45a049;
+}
