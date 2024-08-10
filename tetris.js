@@ -26,6 +26,13 @@ let dropInterval = 1000; // Time in ms between automatic drops
 let score = 0;
 let level = 1;
 let linesCleared = 0;
+let isPaused = false;
+let isGameOver = false;
+
+// Sound effects
+const moveSound = new Audio('move.mp3');
+const clearSound = new Audio('clear.mp3');
+const gameOverSound = new Audio('gameover.mp3');
 
 // Initialize the game
 function init() {
@@ -56,18 +63,36 @@ function init() {
         }
     }
     
-    // Start the game
+    // Reset game state
     score = 0;
     level = 1;
     linesCleared = 0;
+    isPaused = false;
+    isGameOver = false;
     updateScore();
     newPiece();
     newPiece(); // Generate the next piece as well
     draw();
-    gameLoop = setInterval(drop, dropInterval);
+    
+    // Start the game loop
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(gameTick, dropInterval);
 
     // Add keyboard controls
     document.addEventListener('keydown', handleKeyPress);
+    
+    // Hide game over screen
+    document.getElementById('game-over-screen').style.display = 'none';
+    
+    // Update button text
+    document.getElementById('start-button').textContent = 'Restart Game';
+}
+
+// Game tick function
+function gameTick() {
+    if (!isPaused && !isGameOver) {
+        drop();
+    }
 }
 
 // Create a new piece
@@ -86,9 +111,7 @@ function newPiece() {
     currentY = 0;
 
     if (collision()) {
-        // Game over
-        clearInterval(gameLoop);
-        alert(`Game Over! Your score: ${score}`);
+        gameOver();
     }
     
     drawNextPiece();
@@ -184,6 +207,7 @@ function clearLines() {
         }
     }
     if (linesCleared > 0) {
+        clearSound.play();
         updateScore(linesCleared);
     }
 }
@@ -198,7 +222,7 @@ function updateScore(lines = 0) {
     // Update drop speed
     clearInterval(gameLoop);
     dropInterval = Math.max(100, 1000 - (level - 1) * 100); // Minimum 100ms interval
-    gameLoop = setInterval(drop, dropInterval);
+    gameLoop = setInterval(gameTick, dropInterval);
     
     // Update DOM
     document.getElementById('score').textContent = score;
@@ -214,25 +238,21 @@ function rotate() {
     currentPiece = rotated;
     if (collision()) {
         currentPiece = previousPiece;
+    } else {
+        moveSound.play();
     }
 }
 
 // Handle keyboard controls
 function handleKeyPress(event) {
+    if (isGameOver) return;
+    
     switch(event.keyCode) {
         case 37: // Left arrow
-            if (!collision()) {
-                currentX--;
-                if (collision()) {
-                    currentX++;
-                }
-            }
+            moveHorizontal(-1);
             break;
         case 39: // Right arrow
-            currentX++;
-            if (collision()) {
-                currentX--;
-            }
+            moveHorizontal(1);
             break;
         case 40: // Down arrow
             drop();
@@ -241,16 +261,56 @@ function handleKeyPress(event) {
             rotate();
             break;
         case 32: // Spacebar (hard drop)
-            while (!collision()) {
-                currentY++;
-            }
-            currentY--;
-            mergePiece();
-            newPiece();
+            hardDrop();
+            break;
+        case 80: // 'P' key (pause)
+            togglePause();
             break;
     }
     draw();
 }
 
+// Move piece horizontally
+function moveHorizontal(dir) {
+    currentX += dir;
+    if (collision()) {
+        currentX -= dir;
+    } else {
+        moveSound.play();
+    }
+}
+
+// Hard drop
+function hardDrop() {
+    while (!collision()) {
+        currentY++;
+    }
+    currentY--;
+    mergePiece();
+    newPiece();
+    moveSound.play();
+}
+
+// Toggle pause
+function togglePause() {
+    isPaused = !isPaused;
+    document.getElementById('pause-indicator').style.display = isPaused ? 'block' : 'none';
+}
+
+// Game over
+function gameOver() {
+    isGameOver = true;
+    clearInterval(gameLoop);
+    gameOverSound.play();
+    document.getElementById('game-over-screen').style.display = 'flex';
+    document.getElementById('final-score').textContent = score;
+}
+
+// Start/Restart game
+document.getElementById('start-button').addEventListener('click', init);
+
 // Initialize the game when the page loads
-window.addEventListener('load', init);
+window.addEventListener('load', () => {
+    // Don't start automatically, wait for user to click start
+    document.getElementById('start-button').textContent = 'Start Game';
+});
