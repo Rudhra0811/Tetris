@@ -20,6 +20,8 @@ let board;
 let currentPiece;
 let currentX;
 let currentY;
+let gameLoop;
+let dropInterval = 1000; // Time in ms between automatic drops
 
 // Initialize the game
 function init() {
@@ -41,6 +43,10 @@ function init() {
     // Start the game
     newPiece();
     draw();
+    gameLoop = setInterval(drop, dropInterval);
+
+    // Add keyboard controls
+    document.addEventListener('keydown', handleKeyPress);
 }
 
 // Create a new piece
@@ -49,6 +55,12 @@ function newPiece() {
     currentPiece = SHAPES[shapeIndex];
     currentX = Math.floor(COLS / 2) - Math.ceil(currentPiece[0].length / 2);
     currentY = 0;
+
+    if (collision()) {
+        // Game over
+        clearInterval(gameLoop);
+        alert("Game Over!");
+    }
 }
 
 // Draw the game state
@@ -75,6 +87,93 @@ function draw() {
             }
         });
     });
+}
+
+// Check for collision
+function collision() {
+    for (let y = 0; y < currentPiece.length; y++) {
+        for (let x = 0; x < currentPiece[y].length; x++) {
+            if (currentPiece[y][x] &&
+                (board[currentY + y] === undefined ||
+                 board[currentY + y][currentX + x] === undefined ||
+                 board[currentY + y][currentX + x])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Move the piece down
+function drop() {
+    currentY++;
+    if (collision()) {
+        currentY--;
+        mergePiece();
+        newPiece();
+    }
+    draw();
+}
+
+// Merge the piece with the board
+function mergePiece() {
+    currentPiece.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value) {
+                board[currentY + y][currentX + x] = value;
+            }
+        });
+    });
+    clearLines();
+}
+
+// Clear completed lines
+function clearLines() {
+    for (let y = ROWS - 1; y >= 0; y--) {
+        if (board[y].every(cell => cell !== 0)) {
+            board.splice(y, 1);
+            board.unshift(Array(COLS).fill(0));
+        }
+    }
+}
+
+// Rotate the piece
+function rotate() {
+    const rotated = currentPiece[0].map((_, index) =>
+        currentPiece.map(row => row[index]).reverse()
+    );
+    const previousPiece = currentPiece;
+    currentPiece = rotated;
+    if (collision()) {
+        currentPiece = previousPiece;
+    }
+}
+
+// Handle keyboard controls
+function handleKeyPress(event) {
+    switch(event.keyCode) {
+        case 37: // Left arrow
+            if (!collision()) {
+                currentX--;
+                if (collision()) {
+                    currentX++;
+                }
+            }
+            break;
+        case 39: // Right arrow
+            currentX++;
+            if (collision()) {
+                currentX--;
+            }
+            break;
+        case 40: // Down arrow
+            drop();
+            break;
+        case 38: // Up arrow
+            rotate();
+            break;
+    }
+    draw();
 }
 
 // Initialize the game when the page loads
